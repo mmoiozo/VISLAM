@@ -32,6 +32,14 @@
 #include "SnapdragonVislamManager.hpp"
 #include "SnapdragonDebugPrint.h"
 
+//c stuff
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+
 Snapdragon::VislamManager::VislamManager() {
   cam_man_ptr_ = nullptr;
   imu_man_ptr_ = nullptr;
@@ -67,18 +75,18 @@ int32_t Snapdragon::VislamManager::CleanUp() {
   if( vislam_ptr_ != nullptr ) {
     mvVISLAM_Deinitialize( vislam_ptr_ );
     vislam_ptr_ = nullptr;
-  } 
+  }
 
   if( image_buffer_ != nullptr ) {
     delete[] image_buffer_;
     image_buffer_ = nullptr;
     image_buffer_size_bytes_ = 0;
   }
-  return 0;  
+  return 0;
 }
 
 int32_t Snapdragon::VislamManager::Initialize
-( 
+(
   const Snapdragon::CameraParameters& cam_params,
   const Snapdragon::VislamManager::InitParams& vislam_params
 ) {
@@ -174,17 +182,21 @@ bool Snapdragon::VislamManager::HasUpdatedPointCloud() {
   return (mv_ret != 0 );
 }
 
-int32_t Snapdragon::VislamManager::Imu_IEventListener_ProcessSamples( sensor_imu* imu_samples, uint32_t sample_count ) {
+int debug_count = 0;
+
+int32_t Snapdragon::VislamManager::Imu_IEventListener_ProcessSamples( int32_t* imu_samples, uint32_t sample_count ){
   int32_t rc = 0;
-  for (int ii = 0; ii < sample_count; ++ii)
-  {
-    int64_t current_timestamp_ns = (int64_t)imu_samples[ii].timestamp_in_us * 1000;
+  // for (int ii = 0; ii < sample_count; ++ii)
+  // {
+    int64_t current_timestamp_ns;// = (int64_t)imu_samples[ii].timestamp_in_us * 1000;
+    memcpy(&current_timestamp_ns,&imu_samples[7],8);
 
     float delta = 0.f;
     static int64_t last_timestamp = 0;
     if (last_timestamp != 0)
     {
       delta = (current_timestamp_ns - last_timestamp)*1e-6;
+      //printf("delta%f\n", delta);
       const float imu_sample_dt_reasonable_threshold_ms = 2.5;
       if (delta > imu_sample_dt_reasonable_threshold_ms)
       {
@@ -199,31 +211,52 @@ int32_t Snapdragon::VislamManager::Imu_IEventListener_ProcessSamples( sensor_imu
     last_timestamp = current_timestamp_ns;
 
     float lin_acc[3], ang_vel[3];
-    const float kNormG = 9.80665f;
-    lin_acc[0] = imu_samples[ii].linear_acceleration[0] * kNormG;
-    lin_acc[1] = imu_samples[ii].linear_acceleration[1] * kNormG;
-    lin_acc[2] = imu_samples[ii].linear_acceleration[2] * kNormG;
-    ang_vel[0] = imu_samples[ii].angular_velocity[0];
-    ang_vel[1] = imu_samples[ii].angular_velocity[1];
-    ang_vel[2] = imu_samples[ii].angular_velocity[2];
+    // const float kNormG = 9.80665f;
+    // lin_acc[0] = imu_samples[ii].linear_acceleration[0] * kNormG;
+    // lin_acc[1] = imu_samples[ii].linear_acceleration[1] * kNormG;
+    // lin_acc[2] = imu_samples[ii].linear_acceleration[2] * kNormG;
+    // ang_vel[0] = imu_samples[ii].angular_velocity[0];
+    // ang_vel[1] = imu_samples[ii].angular_velocity[1];
+    // ang_vel[2] = imu_samples[ii].angular_velocity[2];
+    const float acc_scale = 0.00478840;//0.004790039;//9.81/2048;
+	const float gyro_scale = 0.001064225;
+    lin_acc[0] = imu_samples[1]*acc_scale;
+    lin_acc[1] = imu_samples[2]*acc_scale;
+    lin_acc[2] = imu_samples[3]*acc_scale;
+    ang_vel[0] = imu_samples[4]*gyro_scale;
+    ang_vel[1] = imu_samples[5]*gyro_scale;
+    ang_vel[2] = imu_samples[6]*gyro_scale;
+
 
     static uint32_t sequence_number_last = 0;
     int num_dropped_samples = 0;
     if (sequence_number_last != 0)
     {
       // The diff should be 1, anything greater means we dropped samples
-      num_dropped_samples = imu_samples[ii].sequence_number
-        - sequence_number_last - 1;
+    //   num_dropped_samples = imu_samples[ii].sequence_number
+    //     - sequence_number_last - 1;
+    num_dropped_samples = imu_samples[0]
+      - sequence_number_last - 1;
       if (num_dropped_samples > 0)
       {
         if (cam_params_.verbose)
         {
           WARN_PRINT("Current IMU sample = %u, last IMU sample = %u",
-              imu_samples[ii].sequence_number, sequence_number_last);
+              imu_samples[0], sequence_number_last);
         }
       }
     }
-    sequence_number_last = imu_samples[ii].sequence_number;
+    //sequence_number_last = imu_samples[ii].sequence_number;
+    sequence_number_last = imu_samples[0];
+    int32_t ts_sec = (int32_t)(current_timestamp_ns/100000000UL);
+    if(debug_count>50){
+        // printf("acc[0]:%f acc[1]:%f acc[1]:%f p:%f q:%f r:%f\n",lin_acc[0],lin_acc[1],lin_acc[2],ang_vel[0],ang_vel[1],ang_vel[2]);
+        // printf("time_stamp:%d seq_nr:%d\n",ts_sec,sequence_number_last );
+        debug_count = 0;
+    }
+    else{
+        debug_count++;
+    }
 
     {
       std::lock_guard<std::mutex> lock( sync_mutex_ );
@@ -232,7 +265,7 @@ int32_t Snapdragon::VislamManager::Imu_IEventListener_ProcessSamples( sensor_imu
       mvVISLAM_AddGyro(vislam_ptr_, current_timestamp_ns,
           ang_vel[0], ang_vel[1], ang_vel[2]);
     }
-  }  
+  //}
   return rc;
 }
 
@@ -244,7 +277,7 @@ int32_t Snapdragon::VislamManager::GetPose( mvVISLAMPose& pose, int64_t& pose_fr
   }
 
   // first set the Image from the camera.
-  // Next add it to the mvVISLAM 
+  // Next add it to the mvVISLAM
   // Then call the API to get the Pose.
   int64_t frame_id;
   uint32_t used = 0;

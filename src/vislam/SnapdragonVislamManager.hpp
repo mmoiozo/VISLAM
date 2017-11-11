@@ -49,7 +49,7 @@ public:
 
   /**
    * This structure defines all the parameters needed to initialize
-   * the mvVISLAM_Initialize() method. Refer the API definition in 
+   * the mvVISLAM_Initialize() method. Refer the API definition in
    * mvVISLAM.h file to get the description for each field.
    **/
   typedef struct {
@@ -82,19 +82,19 @@ public:
    * Initalizes the VISLAM Manager with Camera and VISLAM Parameters
    * @param params
    *  The structure that holds the VISLAM parameters.
-   * @return 
+   * @return
    *  0 = success
    * otherwise = failure.
    **/
   int32_t Initialize
-  ( 
-    const Snapdragon::CameraParameters& cam_params, 
+  (
+    const Snapdragon::CameraParameters& cam_params,
     const Snapdragon::VislamManager::InitParams& params
   );
 
   /**
    * Start the Camera and Imu modules for the VISLAM functionality.
-   * @return 
+   * @return
    *   0 = success
    *  otherwise = failure;
    **/
@@ -102,7 +102,7 @@ public:
 
   /**
    * Stops the VISLAM engine by stoping the Camera and IMU modules.
-   * @return 
+   * @return
    *   0 = success;
    * otherwise = failure.
    **/
@@ -131,7 +131,7 @@ public:
    **/
   int32_t GetPose( mvVISLAMPose& pose, int64_t& frame_id, uint64_t& timestamp_ns );
 
-  /** 
+  /**
    * MV SDK's wrapper to get the PointCloud data.
    * @param points
    *  The Point Cloud points
@@ -160,15 +160,15 @@ public:
    *  0 = success;
    * otherwise = false;
    **/
-  int32_t Imu_IEventListener_ProcessSamples( sensor_imu* samples, uint32_t count );
-
+  //int32_t Imu_IEventListener_ProcessSamples( sensor_imu* samples, uint32_t count );
+  int32_t Imu_IEventListener_ProcessSamples( int32_t* imu_samples, uint32_t sample_count );
   /**
    * Destructor
    */
   virtual ~VislamManager();
 
 private:
-  // utility methods 
+  // utility methods
   int32_t CleanUp();
   std::atomic<bool> initialized_;
   Snapdragon::CameraParameters          cam_params_;

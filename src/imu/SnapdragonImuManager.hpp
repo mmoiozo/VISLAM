@@ -59,7 +59,8 @@ public:
    *  0 = success
    *  otherwise = failure.
    */
-  virtual int32_t Imu_IEventListener_ProcessSamples( sensor_imu* samples, uint32_t sample_count ) = 0;
+  // virtual int32_t Imu_IEventListener_ProcessSamples( sensor_imu* samples, uint32_t sample_count ) = 0;
+    virtual int32_t Imu_IEventListener_ProcessSamples( int32_t* samples, uint32_t sample_count ) = 0;
 
   /**
    * Virtual Destructor
@@ -83,7 +84,7 @@ public:
    * @return int32_t
    *   0 = success
    *  otherwise = failure.
-   **/  
+   **/
   int32_t Initialize();
 
   /**
@@ -107,7 +108,7 @@ public:
    * @return int32_t
    *   0 = success
    *  otherwise = failure.
-   **/  
+   **/
   int32_t Terminate();
 
   /**

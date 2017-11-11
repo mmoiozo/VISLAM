@@ -32,6 +32,29 @@
 #include "SnapdragonImuManager.hpp"
 #include "SnapdragonDebugPrint.h"
 #include <algorithm>
+//c stuff
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+
+//find appropriate cpp way of handeling these vars
+#define MAX_BUF 10
+
+int fd_tx;
+int fd_rx;
+int res = 0;
+
+char *tx_fifo = "/tmp/tx_fifo";
+char *rx_fifo = "/tmp/rx_fifo";
+
+int recv_count = 0;
+int last_seq = 0;
+
+int64_t imu_time_stamp = 0;
 
 Snapdragon::ImuManager::ImuManager() {
   thread_stop_ = false;
@@ -47,38 +70,69 @@ int32_t Snapdragon::ImuManager::Initialize() {
 }
 
 int32_t Snapdragon::ImuManager::SetupImuApi() {
-  int16_t api_rc = 0;
-  //get the imu_api handle first.
-  imu_api_handle_ptr_ = sensor_imu_attitude_api_get_instance();
-  if( imu_api_handle_ptr_ == nullptr ) {
-    //error
-    ERROR_PRINT( "Error getting the IMU API handler." );
-    return -1;
-  }
 
-  // check the version is the correct one.
-  char* api_version = sensor_imu_attitude_api_get_version( imu_api_handle_ptr_ );
-  std::string str_version( api_version );
-  std::string str_expected_version( SENSOR_IMU_AND_ATTITUDE_API_VERSION );
-  if( str_version != str_expected_version ) {
-    ERROR_PRINT( "Error: Imu API version Mismatch.  Make sure to link against the correct version(%s)", 
-      str_expected_version.c_str() );
-    return -2;
-  }
+    mkfifo(rx_fifo, 0777);
+	/* Open, read, and display the message from the FIFO. */
+	fd_tx = open(tx_fifo, O_RDONLY | O_NONBLOCK);
+	printf("open tx pipeline: %d\n", fd_tx);
 
-  //the API' are good. Call the API's initialize method.
-  api_rc = sensor_imu_attitude_api_initialize( imu_api_handle_ptr_, SENSOR_CLOCK_SYNC_TYPE_MONOTONIC );
-  if( api_rc != 0 ) {
-    ERROR_PRINT( "Error calling the IMU API's initialize method api_rc(%d)", api_rc );
-    return api_rc;
-  }
+  // int16_t api_rc = 0;
+  // //get the imu_api handle first.
+  // imu_api_handle_ptr_ = sensor_imu_attitude_api_get_instance();
+  // if( imu_api_handle_ptr_ == nullptr ) {
+  //   //error
+  //   ERROR_PRINT( "Error getting the IMU API handler." );
+  //   return -1;
+  // }
+  //
+  // // check the version is the correct one.
+  // char* api_version = sensor_imu_attitude_api_get_version( imu_api_handle_ptr_ );
+  // std::string str_version( api_version );
+  // std::string str_expected_version( SENSOR_IMU_AND_ATTITUDE_API_VERSION );
+  // if( str_version != str_expected_version ) {
+  //   ERROR_PRINT( "Error: Imu API version Mismatch.  Make sure to link against the correct version(%s)",
+  //     str_expected_version.c_str() );
+  //   return -2;
+  // }
+  //
+  // //the API' are good. Call the API's initialize method.
+  // api_rc = sensor_imu_attitude_api_initialize( imu_api_handle_ptr_, SENSOR_CLOCK_SYNC_TYPE_MONOTONIC );
+  // if( api_rc != 0 ) {
+  //   ERROR_PRINT( "Error calling the IMU API's initialize method api_rc(%d)", api_rc );
+  //   return api_rc;
+  // }
+  //
+  // api_rc = sensor_imu_attitude_api_wait_on_driver_init( imu_api_handle_ptr_ );
+  // if( api_rc != 0 ) {
+  //   ERROR_PRINT( "Error calling the IMU API for driver init completion(%d)", api_rc );
+  //   return api_rc;
+  // }
+  return 0;//api_rc;
+}
 
-  api_rc = sensor_imu_attitude_api_wait_on_driver_init( imu_api_handle_ptr_ );
-  if( api_rc != 0 ) {
-    ERROR_PRINT( "Error calling the IMU API for driver init completion(%d)", api_rc );
-    return api_rc;
-  }  
-  return api_rc;
+//use cpp style function
+int read_pipe(int32_t *dsp_read_buffer,int buf_len)
+{
+	char read_buffer[buf_len*4];
+	int res = 1;
+	int ret = -1;
+	while(res > 0)
+	{
+	res = read(fd_tx, read_buffer, sizeof(read_buffer));
+
+	if(res > 0)
+	  {
+	    memcpy(dsp_read_buffer,read_buffer,sizeof(read_buffer));
+	    //printf("res: %d Received: %d\n",res,dsp_read_buffer[0]);// data_tx[0]);
+        if(dsp_read_buffer[9] == 132508){
+            //printf("dsp_read_buffer[0]%d\n",dsp_read_buffer[0] );
+	           ret = 1;
+            }
+        //ret = 1;
+	  }
+	}
+    //ret = 1;
+	return ret;
 }
 
 void Snapdragon::ImuManager::ImuThreadMain() {
@@ -103,27 +157,30 @@ void Snapdragon::ImuManager::ImuThreadMain() {
 
   while( !thread_stop_ ) {
     returned_sample_count = 0;
-    api_rc = sensor_imu_attitude_api_get_imu_raw( imu_api_handle_ptr_, imu_buffer, 100, &returned_sample_count );
-    if( api_rc != 0 ) {
-      WARN_PRINT( "WARN: Error getting imu samples from imu api(%d)", api_rc );
+    //api_rc = sensor_imu_attitude_api_get_imu_raw( imu_api_handle_ptr_, imu_buffer, 100, &returned_sample_count );
+    int32_t dsp_buffer[MAX_BUF];
+    //printf("Before read\n");
+    int res = read_pipe(dsp_buffer,MAX_BUF);
+
+    if( res < 0){//api_rc != 0 ) {
+     // WARN_PRINT( "WARN: Error getting imu samples from imu api(%d)", api_rc );
     }
     else {
-      if( returned_sample_count > 0 ) {
-        current_seqeunce_number = imu_buffer[0].sequence_number;
+        current_seqeunce_number = dsp_buffer[0];//imu_buffer[0].sequence_number;
         if( prev_sequence_number != 0 && prev_sequence_number + 1 != current_seqeunce_number ) {
-          WARN_PRINT( "Missed IMU Samples: Expected:(%u) Got(%u) sample count: (%d)", 
-            (prev_sequence_number+1), current_seqeunce_number, returned_sample_count );
+        //   WARN_PRINT( "Missed IMU Samples: Expected:(%u) Got(%u) sample count: (%d)",
+        //     (prev_sequence_number+1), current_seqeunce_number, returned_sample_count );
         }
-        prev_sequence_number = imu_buffer[returned_sample_count-1].sequence_number;
+        prev_sequence_number = dsp_buffer[0];//imu_buffer[returned_sample_count-1].sequence_number;
 
         // call the handlers.
         {
           std::lock_guard<std::mutex> lock( sync_mutex_ );
           for( auto h : imu_listeners_ ) {
-            h->Imu_IEventListener_ProcessSamples( imu_buffer, returned_sample_count );
+            //h->Imu_IEventListener_ProcessSamples( imu_buffer, returned_sample_count );
+            h->Imu_IEventListener_ProcessSamples( dsp_buffer, 1);
           }
         }
-      }      
     }
   }
   INFO_PRINT( "Exiting the IMU Manager Thread." );
@@ -151,6 +208,8 @@ int32_t Snapdragon::ImuManager::Stop() {
     imu_reader_thread_.join();
   }
   imu_api_handle_ptr_ = nullptr;
+  //close pipe maybe solves crash issue
+  close(fd_tx);
   return 0;
 }
 
@@ -171,7 +230,7 @@ int32_t Snapdragon::ImuManager::AddHandler( Snapdragon::Imu_IEventListener* hand
 
 int32_t Snapdragon::ImuManager::RemoveHandler( Snapdragon::Imu_IEventListener* handler ) {
   int32_t rc = -1;
-  std::lock_guard<std::mutex> lock( sync_mutex_ );  
+  std::lock_guard<std::mutex> lock( sync_mutex_ );
   auto element = std::find( imu_listeners_.begin(), imu_listeners_.end(), handler );
   if( element != imu_listeners_.end() ) {
     imu_listeners_.erase( element );
@@ -179,4 +238,3 @@ int32_t Snapdragon::ImuManager::RemoveHandler( Snapdragon::Imu_IEventListener* h
   }
   return rc;
 }
-
