@@ -57,7 +57,7 @@ Snapdragon::RosNode::Vislam::~Vislam()
 }
 
 int32_t Snapdragon::RosNode::Vislam::Initialize()
-{ 
+{
   vislam_initialized_ = true;
   return 0;
 }
@@ -139,11 +139,11 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
   vislamParams.minStdPixelNoise = 0.5;
   vislamParams.failHighPixelNoisePoints = false;
 
-  vislamParams.logDepthBootstrap = 0;
+  vislamParams.logDepthBootstrap = -3.2;//0; for ln(0.04) (4cm distance)
   vislamParams.useLogCameraHeight = false;
   vislamParams.logCameraHeightBootstrap = -3.22;
   vislamParams.noInitWhenMoving = true;
-  vislamParams.limitedIMUbWtrigger = 35.0;  
+  vislamParams.limitedIMUbWtrigger = 35.0;
 
   Snapdragon::CameraParameters param;
   param.enable_cpa = 1;
@@ -160,7 +160,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
   cpaConfig.legacyCost.exposureCost = 1.0f;
   cpaConfig.legacyCost.gainCost = 0.3333f;
 
-  param.mv_cpa_config = cpaConfig;   
+  param.mv_cpa_config = cpaConfig;
   Snapdragon::VislamManager vislam_man;
   if( vislam_man.Initialize( param, vislamParams ) != 0  ) {
     ROS_WARN_STREAM( "Snapdragon::RosNodeVislam::VislamThreadMain: Error initializing the VISLAM Manager " );
@@ -184,7 +184,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
     vislam_ret = vislam_man.GetPose( vislamPose, vislamFrameId, timestamp_ns );
     if( vislam_ret == 0 ) {
       //check if the pose quality is good.  If not do not publish the data.
-      if( vislamPose.poseQuality != MV_TRACKING_STATE_FAILED  && 
+      if( vislamPose.poseQuality != MV_TRACKING_STATE_FAILED  &&
           vislamPose.poseQuality != MV_TRACKING_STATE_INITIALIZING ) {
           // Publish Pose Data
           PublishVislamData( vislamPose, vislamFrameId, timestamp_ns );
@@ -220,7 +220,7 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
     vislamPose.bodyPose.matrix[1][2],
     vislamPose.bodyPose.matrix[2][0],
     vislamPose.bodyPose.matrix[2][1],
-    vislamPose.bodyPose.matrix[2][2]); 
+    vislamPose.bodyPose.matrix[2][2]);
   tf2::Quaternion q;
   R.getRotation(q);
   pose_msg.pose.position.x = vislamPose.bodyPose.matrix[0][3];
@@ -250,7 +250,7 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
       odom_msg.pose.covariance[ i*6 + j ] = vislamPose.errCovPose[i][j];
     }
   }
-  pub_vislam_odometry_.publish(odom_msg); 
+  pub_vislam_odometry_.publish(odom_msg);
 
   // compute transforms
   std::vector<geometry_msgs::TransformStamped> transforms;
@@ -271,6 +271,5 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
 
   // broadcast transforms
   static tf2_ros::TransformBroadcaster br;
-  br.sendTransform(transforms);     
+  br.sendTransform(transforms);
 }
-
