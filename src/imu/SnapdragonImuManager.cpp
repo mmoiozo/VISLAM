@@ -63,6 +63,9 @@ int last_seq = 0;
 
 int64_t imu_time_stamp = 0;
 
+//crc
+const uint8_t CRC7_POLY = 0x91;
+
 Snapdragon::ImuManager::ImuManager() {
   thread_stop_ = false;
   initialized_ = false;
@@ -83,38 +86,26 @@ int32_t Snapdragon::ImuManager::SetupImuApi() {
 	fd_tx = open(tx_fifo, O_RDONLY | O_NONBLOCK);
 	printf("open tx pipe: %d\n", fd_tx);
 
-  // int16_t api_rc = 0;
-  // //get the imu_api handle first.
-  // imu_api_handle_ptr_ = sensor_imu_attitude_api_get_instance();
-  // if( imu_api_handle_ptr_ == nullptr ) {
-  //   //error
-  //   ERROR_PRINT( "Error getting the IMU API handler." );
-  //   return -1;
-  // }
-  //
-  // // check the version is the correct one.
-  // char* api_version = sensor_imu_attitude_api_get_version( imu_api_handle_ptr_ );
-  // std::string str_version( api_version );
-  // std::string str_expected_version( SENSOR_IMU_AND_ATTITUDE_API_VERSION );
-  // if( str_version != str_expected_version ) {
-  //   ERROR_PRINT( "Error: Imu API version Mismatch.  Make sure to link against the correct version(%s)",
-  //     str_expected_version.c_str() );
-  //   return -2;
-  // }
-  //
-  // //the API' are good. Call the API's initialize method.
-  // api_rc = sensor_imu_attitude_api_initialize( imu_api_handle_ptr_, SENSOR_CLOCK_SYNC_TYPE_MONOTONIC );
-  // if( api_rc != 0 ) {
-  //   ERROR_PRINT( "Error calling the IMU API's initialize method api_rc(%d)", api_rc );
-  //   return api_rc;
-  // }
-  //
-  // api_rc = sensor_imu_attitude_api_wait_on_driver_init( imu_api_handle_ptr_ );
-  // if( api_rc != 0 ) {
-  //   ERROR_PRINT( "Error calling the IMU API for driver init completion(%d)", api_rc );
-  //   return api_rc;
-  // }
-  return 0;//api_rc;
+  return 0;
+}
+
+//crc crc_checksum
+
+uint8_t getCRC(uint8_t message[], int length)
+{
+  uint8_t i, j, crc = 0;
+
+  for (i = 0; i < length; i++)
+  {
+    crc ^= message[i];
+    for (j = 0; j < 8; j++)
+    {
+      if (crc & 1)
+        crc ^= CRC7_POLY;
+      crc >>= 1;
+    }
+  }
+  return crc;
 }
 
 //use cpp style function
@@ -153,30 +144,12 @@ int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vi
     int f_length = 30;
     float buffer_f[f_length];
 
+    //use gravityCameraPose instead of bodyPose??
+
     //position x y z in global frame
     buffer_f[0] = vislamPose.bodyPose.matrix[0][3];
     buffer_f[1] = vislamPose.bodyPose.matrix[1][3];
     buffer_f[2] = vislamPose.bodyPose.matrix[2][3];
-
-    // translate vislam pose to ROS pose
-    // tf2::Matrix3x3 R(
-    //   vislamPose.bodyPose.matrix[0][0],
-    //   vislamPose.bodyPose.matrix[0][1],
-    //   vislamPose.bodyPose.matrix[0][2],
-    //   vislamPose.bodyPose.matrix[1][0],
-    //   vislamPose.bodyPose.matrix[1][1],
-    //   vislamPose.bodyPose.matrix[1][2],
-    //   vislamPose.bodyPose.matrix[2][0],
-    //   vislamPose.bodyPose.matrix[2][1],
-    //   vislamPose.bodyPose.matrix[2][2]);
-    // tf2::Quaternion q;
-    // R.getRotation(q);
-    //
-    // //quaternion rotations
-    // buffer_f[3] = q.getX();
-    // buffer_f[4] = q.getY();
-    // buffer_f[5] = q.getZ();
-    // buffer_f[6] = q.getW();
 
     buffer_f[3] = vislamPose.bodyPose.matrix[0][0];
     buffer_f[4] = vislamPose.bodyPose.matrix[0][1];
@@ -220,7 +193,7 @@ int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vi
     //total length of buffer send
     int out_buffer_length = 22+f_int_8_length + 1;//+1 for crc8
 
-    char out_buffer[out_buffer_length];
+    uint8_t out_buffer[out_buffer_length];
 
     int ptr = 0;
     memcpy(out_buffer,&vislamFrameId,sizeof(vislamFrameId));
@@ -237,23 +210,15 @@ int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vi
     //copy float array to out_buffer
     memcpy(out_buffer+ptr,buffer_f,f_int_8_length);
 
-    //out_buffer[out_buffer_length-1] = crc_checksum;
-
-    // memcpy(out_buffer+ptr,&pos_x_test,sizeof(pos_x_test));
-    // ptr+=4;
-    // memcpy(out_buffer+ptr,&pos_y_test,sizeof(pos_y_test));
-    // ptr+=4;
-    // memcpy(out_buffer+ptr,&pos_z_test,sizeof(pos_z_test));
+    uint8_t crc_checksum = getCRC(out_buffer,out_buffer_length-2);
+    out_buffer[out_buffer_length-1] = crc_checksum;
 
 
     if (fd_rx < 0)
 		fd_rx = open(rx_fifo, O_WRONLY | O_NONBLOCK);
 
 	int res = write(fd_rx, out_buffer, out_buffer_length);
-    // fflush(stdout);
-    // printf("\nfd_rx:%d\n",fd_rx);
-    // printf("write res:%d\n",res);
-    // printf("pos_x_test:%f\n",pos_x_test);
+
     return 0;
 }
 
