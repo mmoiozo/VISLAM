@@ -250,7 +250,7 @@ int32_t Snapdragon::VislamManager::Imu_IEventListener_ProcessSamples( int32_t* i
     sequence_number_last = imu_samples[0];
     int32_t ts_sec = (int32_t)(current_timestamp_ns/100000000UL);
     if(debug_count>50){
-        // printf("acc[0]:%f acc[1]:%f acc[1]:%f p:%f q:%f r:%f\n",lin_acc[0],lin_acc[1],lin_acc[2],ang_vel[0],ang_vel[1],ang_vel[2]);
+        //printf("acc[0]:%f acc[1]:%f acc[1]:%f p:%f q:%f r:%f\n",lin_acc[0],lin_acc[1],lin_acc[2],ang_vel[0],ang_vel[1],ang_vel[2]);
         // printf("time_stamp:%d seq_nr:%d\n",ts_sec,sequence_number_last );
         debug_count = 0;
     }

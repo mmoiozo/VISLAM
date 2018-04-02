@@ -36,6 +36,8 @@
 #include <atomic>
 #include <vector>
 
+#include <mvVISLAM.h>
+
 #include <sensor-imu/sensor_imu_api.h>
 #include <sensor-imu/sensor_datatypes.h>
 
@@ -78,6 +80,10 @@ public:
    * Constructor
    **/
   ImuManager();
+
+  //write vislam output to pipe to autopilot
+  int32_t write_pipe( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns );
+
 
   /**
    * Initializes the manager. This should be called first.

@@ -32,6 +32,7 @@
 #include "SnapdragonImuManager.hpp"
 #include "SnapdragonDebugPrint.h"
 #include <algorithm>
+#include <mvVISLAM.h>
 //c stuff
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,12 +41,18 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <iostream>
+
+//quaternion transform
+#include <tf2/LinearMath/Matrix3x3.h>
+// #include <tf2_ros/transform_broadcaster.h>
+// #include <tf2_ros/buffer.h>
 
 //find appropriate cpp way of handeling these vars
 #define MAX_BUF 10
 
-int fd_tx;
-int fd_rx;
+int fd_tx = -1;
+int fd_rx = -1;
 int res = 0;
 
 char *tx_fifo = "/tmp/tx_fifo";
@@ -71,10 +78,10 @@ int32_t Snapdragon::ImuManager::Initialize() {
 
 int32_t Snapdragon::ImuManager::SetupImuApi() {
 
-    mkfifo(rx_fifo, 0777);
+     mkfifo(rx_fifo, 0777);
 	/* Open, read, and display the message from the FIFO. */
 	fd_tx = open(tx_fifo, O_RDONLY | O_NONBLOCK);
-	printf("open tx pipeline: %d\n", fd_tx);
+	printf("open tx pipe: %d\n", fd_tx);
 
   // int16_t api_rc = 0;
   // //get the imu_api handle first.
@@ -128,11 +135,126 @@ int read_pipe(int32_t *dsp_read_buffer,int buf_len)
             //printf("dsp_read_buffer[0]%d\n",dsp_read_buffer[0] );
 	           ret = 1;
             }
-        //ret = 1;
 	  }
 	}
-    //ret = 1;
 	return ret;
+}
+
+int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns ){
+
+
+    float pos_x_test = vislamPose.bodyPose.matrix[0][3];
+    float pos_y_test = vislamPose.bodyPose.matrix[1][3];
+    float pos_z_test = vislamPose.bodyPose.matrix[2][3];
+
+    uint32_t vislam_errorCode = vislamPose.errorCode;
+    int16_t vislam_poseQuality = vislamPose.poseQuality;
+
+    int f_length = 30;
+    float buffer_f[f_length];
+
+    //position x y z in global frame
+    buffer_f[0] = vislamPose.bodyPose.matrix[0][3];
+    buffer_f[1] = vislamPose.bodyPose.matrix[1][3];
+    buffer_f[2] = vislamPose.bodyPose.matrix[2][3];
+
+    // translate vislam pose to ROS pose
+    // tf2::Matrix3x3 R(
+    //   vislamPose.bodyPose.matrix[0][0],
+    //   vislamPose.bodyPose.matrix[0][1],
+    //   vislamPose.bodyPose.matrix[0][2],
+    //   vislamPose.bodyPose.matrix[1][0],
+    //   vislamPose.bodyPose.matrix[1][1],
+    //   vislamPose.bodyPose.matrix[1][2],
+    //   vislamPose.bodyPose.matrix[2][0],
+    //   vislamPose.bodyPose.matrix[2][1],
+    //   vislamPose.bodyPose.matrix[2][2]);
+    // tf2::Quaternion q;
+    // R.getRotation(q);
+    //
+    // //quaternion rotations
+    // buffer_f[3] = q.getX();
+    // buffer_f[4] = q.getY();
+    // buffer_f[5] = q.getZ();
+    // buffer_f[6] = q.getW();
+
+    buffer_f[3] = vislamPose.bodyPose.matrix[0][0];
+    buffer_f[4] = vislamPose.bodyPose.matrix[0][1];
+    buffer_f[5] = vislamPose.bodyPose.matrix[0][2];
+    buffer_f[6] = vislamPose.bodyPose.matrix[1][0];
+    buffer_f[7] = vislamPose.bodyPose.matrix[1][1];
+    buffer_f[8] = vislamPose.bodyPose.matrix[1][2];
+    buffer_f[9] = vislamPose.bodyPose.matrix[2][0];
+    buffer_f[10] = vislamPose.bodyPose.matrix[2][1];
+    buffer_f[11] = vislamPose.bodyPose.matrix[2][2];
+
+
+    //x y z body velocity
+    buffer_f[12] = vislamPose.velocity[0];
+    buffer_f[13] = vislamPose.velocity[1];
+    buffer_f[14] = vislamPose.velocity[2];
+
+    // p q r body velocity
+    buffer_f[15] = vislamPose.angularVelocity[0];
+    buffer_f[16] = vislamPose.angularVelocity[1];
+    buffer_f[17] = vislamPose.angularVelocity[2];
+
+    //gyro biases
+    buffer_f[18] = vislamPose.wBias[0];
+    buffer_f[19] = vislamPose.wBias[1];
+    buffer_f[20] = vislamPose.wBias[2];
+    //acc biases
+    buffer_f[21] = vislamPose.aBias[0];
+    buffer_f[22] = vislamPose.aBias[1];
+    buffer_f[23] = vislamPose.aBias[2];
+
+    //pose error covariance(for now only autocovariance)
+    for( int16_t i = 0; i < 6; i++ ) {
+        buffer_f[24+i] =  vislamPose.errCovPose[i][i];
+    }
+
+    //max buffer_f[29] -> f_length = 30
+
+    int f_int_8_length = f_length*sizeof(float);
+
+    //total length of buffer send
+    int out_buffer_length = 22+f_int_8_length + 1;//+1 for crc8
+
+    char out_buffer[out_buffer_length];
+
+    int ptr = 0;
+    memcpy(out_buffer,&vislamFrameId,sizeof(vislamFrameId));
+    ptr+=8;
+    memcpy(out_buffer+ptr,&timestamp_ns,sizeof(timestamp_ns));
+    ptr+=8;
+    memcpy(out_buffer+ptr,&vislam_errorCode,sizeof(vislam_errorCode));
+    ptr+=4;
+    memcpy(out_buffer+ptr,&vislam_poseQuality,sizeof(vislam_poseQuality));
+    ptr+=2;
+
+    //ptr = 22
+
+    //copy float array to out_buffer
+    memcpy(out_buffer+ptr,buffer_f,f_int_8_length);
+
+    //out_buffer[out_buffer_length-1] = crc_checksum;
+
+    // memcpy(out_buffer+ptr,&pos_x_test,sizeof(pos_x_test));
+    // ptr+=4;
+    // memcpy(out_buffer+ptr,&pos_y_test,sizeof(pos_y_test));
+    // ptr+=4;
+    // memcpy(out_buffer+ptr,&pos_z_test,sizeof(pos_z_test));
+
+
+    if (fd_rx < 0)
+		fd_rx = open(rx_fifo, O_WRONLY | O_NONBLOCK);
+
+	int res = write(fd_rx, out_buffer, out_buffer_length);
+    // fflush(stdout);
+    // printf("\nfd_rx:%d\n",fd_rx);
+    // printf("write res:%d\n",res);
+    // printf("pos_x_test:%f\n",pos_x_test);
+    return 0;
 }
 
 void Snapdragon::ImuManager::ImuThreadMain() {
@@ -208,8 +330,9 @@ int32_t Snapdragon::ImuManager::Stop() {
     imu_reader_thread_.join();
   }
   imu_api_handle_ptr_ = nullptr;
-  //close pipe maybe solves crash issue
+  //close pipe
   close(fd_tx);
+  close(fd_rx);
   return 0;
 }
 

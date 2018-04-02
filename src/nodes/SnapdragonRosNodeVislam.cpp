@@ -31,6 +31,9 @@
  ****************************************************************************/
 #include "SnapdragonRosNodeVislam.hpp"
 
+//for vislam pipe
+#include "SnapdragonImuManager.hpp"
+
 #include <geometry_msgs/PointStamped.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/TransformStamped.h>
@@ -162,6 +165,8 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
 
   param.mv_cpa_config = cpaConfig;
   Snapdragon::VislamManager vislam_man;
+  //object for write_pipe
+  Snapdragon::ImuManager imu_man_2;
   if( vislam_man.Initialize( param, vislamParams ) != 0  ) {
     ROS_WARN_STREAM( "Snapdragon::RosNodeVislam::VislamThreadMain: Error initializing the VISLAM Manager " );
     thread_started_ = false;
@@ -189,6 +194,8 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
           // Publish Pose Data
           PublishVislamData( vislamPose, vislamFrameId, timestamp_ns );
       }
+      //always write to autopilot pipe 
+      imu_man_2.write_pipe( vislamPose, vislamFrameId, timestamp_ns );
     }
     else {
       ROS_WARN_STREAM( "Snapdragon::RosNodeVislam::VislamThreadMain: Warning Getting Pose Information" );
