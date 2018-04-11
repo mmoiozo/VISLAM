@@ -133,11 +133,6 @@ int read_pipe(int32_t *dsp_read_buffer,int buf_len)
 
 int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns ){
 
-
-    float pos_x_test = vislamPose.bodyPose.matrix[0][3];
-    float pos_y_test = vislamPose.bodyPose.matrix[1][3];
-    float pos_z_test = vislamPose.bodyPose.matrix[2][3];
-
     uint32_t vislam_errorCode = vislamPose.errorCode;
     int16_t vislam_poseQuality = vislamPose.poseQuality;
 
@@ -183,7 +178,7 @@ int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vi
 
     //pose error covariance(for now only autocovariance)
     for( int16_t i = 0; i < 6; i++ ) {
-        buffer_f[24+i] =  vislamPose.errCovPose[i][i];
+        buffer_f[24+i] =  i;//vislamPose.errCovPose[i][i];
     }
 
     //max buffer_f[29] -> f_length = 30
@@ -210,6 +205,7 @@ int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vi
     //copy float array to out_buffer
     memcpy(out_buffer+ptr,buffer_f,f_int_8_length);
 
+    //calculate crc checksum
     uint8_t crc_checksum = getCRC(out_buffer,out_buffer_length-2);
     out_buffer[out_buffer_length-1] = crc_checksum;
 

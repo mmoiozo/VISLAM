@@ -90,21 +90,48 @@ int32_t Snapdragon::RosNode::Vislam::Stop() {
 void Snapdragon::RosNode::Vislam::ThreadMain() {
  mvCameraConfiguration config;
   // Set up camera configuraiton (snapdragon down facing camera)
+
+
+//NEW CALIBRATION 0.6pix error
+// <?xml version='1.0' encoding='UTF-8'?>
+// <Camera>
+//     <Parameters>
+//         <Intrinsics size="640 480" pp="305.590618 239.961624" fl = "267.324250 267.324250" distModel = "10" dist = "0.066161 -0.040640 0.008189 -0.000463 0.000000 0.000000 0.000000 0.000000"/>
+//     </Parameters>
+// </Camera>
+
+
   memset(&config, 0, sizeof(config));
   config.pixelWidth = 640;
   config.pixelHeight = 480;
   config.memoryStride = 640;
 
-  config.principalPoint[0] = 320;
-  config.principalPoint[1] = 240;
+  // config.principalPoint[0] = 320;
+  // config.principalPoint[1] = 240;
+  config.principalPoint[0] = 305.590618;
+  config.principalPoint[1] = 239.961624;
 
-  config.focalLength[0] = 275;
-  config.focalLength[1] = 275;
+  // config.focalLength[0] = 275;
+  // config.focalLength[1] = 275;
+  config.focalLength[0] = 267.324250;
+  config.focalLength[1] = 267.324250;
 
-  config.distortion[0] = 0.003908;
-  config.distortion[1] = -0.009574;
-  config.distortion[2] = 0.010173;
-  config.distortion[3] = -0.003329;
+
+  // config.distortion[0] = 0.003908;
+  // config.distortion[1] = -0.009574;
+  // config.distortion[2] = 0.010173;
+  // config.distortion[3] = -0.003329;
+  // config.distortion[4] = 0;
+  // config.distortion[5] = 0;
+  // config.distortion[6] = 0;
+  // config.distortion[7] = 0;
+  // config.distortionModel = 10;
+
+  //dist = "0.066161 -0.040640 0.008189 -0.000463 0.000000 0.000000 0.000000 0.000000"
+  config.distortion[0] = 0.066161;
+  config.distortion[1] = -0.040640;
+  config.distortion[2] = 0.008189;
+  config.distortion[3] = -0.000463;
   config.distortion[4] = 0;
   config.distortion[5] = 0;
   config.distortion[6] = 0;
@@ -194,7 +221,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
           // Publish Pose Data
           PublishVislamData( vislamPose, vislamFrameId, timestamp_ns );
       }
-      //always write to autopilot pipe 
+      //always write to autopilot pipe
       imu_man_2.write_pipe( vislamPose, vislamFrameId, timestamp_ns );
     }
     else {
