@@ -218,6 +218,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
   uint8_t* frame_data;
   while( !thread_stop_ ) {
     vislam_ret = vislam_man.GetPose( vislamPose, vislamFrameId, timestamp_ns );
+    frame_data = vislam_man.GetFrameData();
     if( vislam_ret == 0 ) {
       //check if the pose quality is good.  If not do not publish the data.
       if( vislamPose.poseQuality != MV_TRACKING_STATE_FAILED  &&

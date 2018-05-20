@@ -162,6 +162,9 @@ public:
    **/
   //int32_t Imu_IEventListener_ProcessSamples( sensor_imu* samples, uint32_t count );
   int32_t Imu_IEventListener_ProcessSamples( int32_t* imu_samples, uint32_t sample_count );
+
+  uint8_t* GetFrameData();
+
   /**
    * Destructor
    */
