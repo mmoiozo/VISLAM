@@ -187,7 +187,7 @@ int32_t Snapdragon::CameraManager::Start() {
     }
   }
   else {
-    ERROR_PRINT( "CameraManager has not yet been initialized."  ); 
+    ERROR_PRINT( "CameraManager has not yet been initialized."  );
     return -1;
   }
 
@@ -236,9 +236,9 @@ void Snapdragon::CameraManager::UpdateGainAndExposure()
   auto time_now = std::chrono::system_clock::now();
   auto diff = time_now - time_last;
 
-  if( diff.count() > 0  
+  if( diff.count() > 0
       ||
-      abs(exposure_target_ - exposure_setting_) > camera_config_ptr_->cpa_exposure_change_threshold 
+      abs(exposure_target_ - exposure_setting_) > camera_config_ptr_->cpa_exposure_change_threshold
       ||
       abs(gain_target_ - gain_setting_) > camera_config_ptr_->cpa_gain_change_threshold
       &&
@@ -250,7 +250,7 @@ void Snapdragon::CameraManager::UpdateGainAndExposure()
         sprintf(exposure_string,"%d",exposure_target_);
         char gain_string[6];
         sprintf(gain_string,"%d",gain_target_);
-        
+
         params_.set("qc-exposure-manual",exposure_string);
         params_.set("qc-gain-manual",gain_string);
         params_.commit();
@@ -278,22 +278,22 @@ void Snapdragon::CameraManager::onError()
 
 int32_t Snapdragon::CameraManager::GetNextImageData
 (
-  int64_t*  frame_id, 
+  int64_t*  frame_id,
   uint64_t* timestamp_ns,
-  uint8_t* image_data, 
-  uint32_t size, 
+  uint8_t* image_data,
+  uint32_t size,
   uint32_t* used
 ) {
-  
+
   std::unique_lock<std::mutex> lock( frame_mutex_ );
   int32_t ret_code = 0;
 
-  // wait for new frame if queue is empty. 
+  // wait for new frame if queue is empty.
   frame_cv_.wait( lock, [&]{ return (frame_q_read_index_ != frame_q_write_index_); } );
 
   if( !running_ ) {
     // the camera has stopped.  so return an error code.
-    return  -1; 
+    return  -1;
   }
 
   if( frame_queue_[ frame_q_read_index_].first == -1 || frame_queue_[frame_q_read_index_].second == nullptr ) {
@@ -339,9 +339,9 @@ void Snapdragon::CameraManager::onPreviewFrame(camera::ICameraFrame* frame)
     {
       std::lock_guard<std::mutex> lock( frame_mutex_ );
 
-      //check if the queue already has an valid frame.  If yes, release the frame to be used 
+      //check if the queue already has an valid frame.  If yes, release the frame to be used
       // by the camera pipeline.
-      if( frame_queue_[ frame_q_write_index_ ].first != -1 && 
+      if( frame_queue_[ frame_q_write_index_ ].first != -1 &&
         frame_queue_[ frame_q_write_index_ ].second != nullptr ) {
         frame_queue_[ frame_q_write_index_ ].second->releaseRef();
       }
@@ -352,7 +352,7 @@ void Snapdragon::CameraManager::onPreviewFrame(camera::ICameraFrame* frame)
 
       //update the gain and exposure only one every 4 frames, as there a delay in taking the new
       // exposure parameters to take into effect.
-      if( snap_camera_param_ptr_->enable_cpa 
+      if( snap_camera_param_ptr_->enable_cpa
           &&
           (next_frame_id_ > 0 && (next_frame_id_ % 4 ) == 0 ) ) {
         UpdateGainAndExposure();
@@ -361,7 +361,7 @@ void Snapdragon::CameraManager::onPreviewFrame(camera::ICameraFrame* frame)
       frame_q_write_index_++;
       frame_q_write_index_ = (frame_q_write_index_ >= camera_config_ptr_->num_image_buffers )?0:frame_q_write_index_;
 
-      if( frame_q_write_index_ == frame_q_read_index_ ) { 
+      if( frame_q_write_index_ == frame_q_read_index_ ) {
         //queue is full, increment the read index;
         frame_q_read_index_++;
         frame_q_read_index_ = ( frame_q_read_index_ >= camera_config_ptr_->num_image_buffers)?0:frame_q_read_index_;
@@ -380,6 +380,7 @@ void Snapdragon::CameraManager::onPreviewFrame(camera::ICameraFrame* frame)
   else{
     WARN_PRINT( "Got duplicate image frame at timestamp: %lld frame_id: %llu", frame->timeStamp, next_frame_id_ );
   }
+  cur_frame_ = frame;
 }
 
 void Snapdragon::CameraManager::onVideoFrame(camera::ICameraFrame* frame)
@@ -387,4 +388,3 @@ void Snapdragon::CameraManager::onVideoFrame(camera::ICameraFrame* frame)
   // Should never get this
   INFO_PRINT("Got video frame!");
 }
-

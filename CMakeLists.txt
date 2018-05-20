@@ -6,9 +6,11 @@ project(snap_ros_examples)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   roscpp
+  image_transport
   rospy
   std_msgs
   tf2_ros
+  cv_bridge
 )
 
 ## System dependencies are found with CMake's conventions
@@ -121,7 +123,7 @@ include_directories(
   $ENV{MV_SDK}/usr/include/mv
 )
 
-add_definitions(-std=c++11) 
+add_definitions(-std=c++11)
 
 ## Declare a C++ library
 add_library(snap_vislam
@@ -132,7 +134,7 @@ add_library(snap_vislam
    src/vislam/SnapdragonVislamManager.cpp
 )
 
-target_include_directories( snap_vislam PUBLIC 
+target_include_directories( snap_vislam PUBLIC
   src/camera/
   src/imu/
   src/vislam/
@@ -168,7 +170,7 @@ add_dependencies(snap_vislam_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_E
 ## Specify libraries to link a library or executable target against
  target_link_libraries(snap_vislam_node
    snap_vislam
-   mv1 
+   mv1
    camera
    sensor_imu
    pthread
@@ -218,7 +220,7 @@ set(CMAKE_EXE_LINKER_FLAGS "-Wl,-gc-sections -Wl,-rpath-link,${CMAKE_SYSROOT}/li
 #############
 
 ## Add gtest based cpp test target and link libraries
-#catkin_add_gtest(${PROJECT_NAME}-test 
+#catkin_add_gtest(${PROJECT_NAME}-test
 #)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
