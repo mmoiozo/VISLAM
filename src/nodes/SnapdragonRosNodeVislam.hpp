@@ -118,6 +118,7 @@ private:
   ros::Publisher   pub_vislam_path_;
 
   image_transport::Publisher pub_vislam_image_;
+  ros::Publisher pub_vislam_camera_info_;
 
   //Snapdragon::VislamManager vislam_manager_;//???
 

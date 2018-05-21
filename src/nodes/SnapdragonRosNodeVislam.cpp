@@ -49,7 +49,9 @@ Snapdragon::RosNode::Vislam::Vislam( ros::NodeHandle nh ) : nh_(nh)
   pub_vislam_odometry_ = nh_.advertise<nav_msgs::Odometry>("vislam/odometry",1);
   pub_vislam_path_ = nh_.advertise<visualization_msgs::Marker>("vislam/path",1);
   image_transport::ImageTransport it(nh_);
+  image_transport::ImageTransport it_info(nh_);
   pub_vislam_image_ = it.advertise("/vislam/image",1);
+  pub_vislam_camera_info_ = nh_.advertise<sensor_msgs::CameraInfo>("/vislam/camera_info",1);
   vislam_initialized_ = false;
   thread_started_ = false;
   thread_stop_ = false;
@@ -318,7 +320,35 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   cvi.toImageMsg(img_msg);
   img_msg.header.frame_id = "vislam";
   img_msg.header.stamp = frame_time;
-  pub_vislam_image_.publish(img_msg);
+
+  sensor_msgs::CameraInfo c_info;
+  c_info.header.frame_id = "vislam";
+  c_info.header.stamp = frame_time;
+
+  c_info.height = 480;
+  c_info.width = 640;
+
+  // config.principalPoint[0] = 305.590618;
+  // config.principalPoint[1] = 239.961624;
+  //
+  // // config.focalLength[0] = 275;
+  // // config.focalLength[1] = 275;
+  // config.focalLength[0] = 267.324250;
+  // config.focalLength[1] = 267.324250;
+
+   c_info.K[0] = 267.324250;
+   c_info.K[1] = 0;
+   c_info.K[2] = 305.590618;
+   c_info.K[3] = 0;
+   c_info.K[4] = 267.324250;
+   c_info.K[5] = 239.961624;
+   c_info.K[6] = 0;
+   c_info.K[7] = 0;
+   c_info.K[8] = 1;
+
+  pub_vislam_image_.publish(img_msg);//,c_info);
+
+  pub_vislam_camera_info_.publish(c_info);
 
   // compute transforms
   std::vector<geometry_msgs::TransformStamped> transforms;
