@@ -336,15 +336,15 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   // config.focalLength[0] = 267.324250;
   // config.focalLength[1] = 267.324250;
 
-   c_info.K[0] = 267.324250;
-   c_info.K[1] = 0;
-   c_info.K[2] = 305.590618;
-   c_info.K[3] = 0;
-   c_info.K[4] = 267.324250;
-   c_info.K[5] = 239.961624;
-   c_info.K[6] = 0;
-   c_info.K[7] = 0;
-   c_info.K[8] = 1;
+   c_info.K[0] =  0.0;//267.324250;
+   // c_info.K[1] = 0;
+   // c_info.K[2] = 305.590618;
+   // c_info.K[3] = 0;
+   // c_info.K[4] = 267.324250;
+   // c_info.K[5] = 239.961624;
+   // c_info.K[6] = 0;
+   // c_info.K[7] = 0;
+   // c_info.K[8] = 1;
 
   pub_vislam_image_.publish(img_msg);//,c_info);
 
