@@ -43,6 +43,16 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/buffer.h>
 
+// #include <time.h>
+//
+// //Time
+// struct timespec tp;
+//
+// double delta_time_max = 0;
+// double lag_time_max = 0;
+// uint64_t timestamp_ns_prev = 0;
+// int time_count = 0;
+
 Snapdragon::RosNode::Vislam::Vislam( ros::NodeHandle nh ) : nh_(nh)
 {
   pub_vislam_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("vislam/pose",1);
@@ -221,6 +231,25 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
   while( !thread_stop_ ) {
     vislam_ret = vislam_man.GetPose( vislamPose, vislamFrameId, timestamp_ns );
     frame_data = vislam_man.GetFrameData();
+
+    //Check timing
+    // clock_gettime(CLOCK_MONOTONIC, &tp);
+	// uint64_t current = tp.tv_sec*1000000000 + tp.tv_nsec;
+	// double lag_time = (double)(current - timestamp_ns)/1000000.0;//ms
+    // double delta_time = (double)(timestamp_ns - timestamp_ns_prev)/1000000.0;//ms
+    // timestamp_ns_prev = timestamp_ns;
+    // if(delta_time>delta_time_max)delta_time_max=delta_time;
+    // if(lag_time>lag_time_max)lag_time_max=lag_time;
+    // time_count++;
+    // if(time_count>30){
+    //     printf("delta_time_max: %f\n", delta_time_max);
+    //     printf("lag_time_max: %f\n", lag_time_max);
+    //     delta_time_max = 0;
+    //     lag_time_max = 0;
+    //     time_count = 0;
+    // }
+
+
     if( vislam_ret == 0 ) {
       //check if the pose quality is good.  If not do not publish the data.
       if( vislamPose.poseQuality != MV_TRACKING_STATE_FAILED  &&
@@ -270,9 +299,6 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   pose_msg.pose.orientation.x = q.getX();
   pose_msg.pose.orientation.y = q.getY();
   pose_msg.pose.orientation.z = q.getZ();
-  pose_msg.pose.orientation.w = q.getW();
-  pub_vislam_pose_.publish(pose_msg);
-
   pose_msg.pose.orientation.w = q.getW();
   pub_vislam_pose_.publish(pose_msg);
 

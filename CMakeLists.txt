@@ -151,14 +151,14 @@ target_include_directories( snap_vislam PUBLIC
 add_library(mv1 SHARED IMPORTED)
 set_property(TARGET mv1 PROPERTY IMPORTED_LOCATION $ENV{MV_SDK}/usr/lib/libmv1.so)
 
-add_executable( test_snap_cam_manager test/test_SnapdragonCameraManager.cpp )
-target_link_libraries( test_snap_cam_manager snap_vislam sensor_imu mv1 pthread camera  )
+#add_executable( test_snap_cam_manager test/test_SnapdragonCameraManager.cpp )
+#target_link_libraries( test_snap_cam_manager snap_vislam sensor_imu mv1 pthread camera  )
 
-add_executable( test_imu_manager test/test_SnapdragonImuManager.cpp )
-target_link_libraries( test_imu_manager snap_vislam sensor_imu mv1 pthread camera  )
+#add_executable( test_imu_manager test/test_SnapdragonImuManager.cpp )
+#target_link_libraries( test_imu_manager snap_vislam sensor_imu mv1 pthread camera  )
 
-add_executable( test_vislam test/test_SnapdragonVislamManager.cpp )
-target_link_libraries( test_vislam snap_vislam sensor_imu mv1 pthread camera  )
+#add_executable( test_vislam test/test_SnapdragonVislamManager.cpp )
+#target_link_libraries( test_vislam snap_vislam sensor_imu mv1 pthread camera  )
 
 ## Declare a C++ executable
 add_executable(snap_vislam_node src/nodes/SnapdragonRosNodeVislam.cpp src/nodes/SnapdragonRosNodeVislam_main.cpp )
