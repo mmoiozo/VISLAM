@@ -185,7 +185,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
   vislamParams.failHighPixelNoisePoints = false;
 
   vislamParams.logDepthBootstrap = -3.2;//0; for ln(0.04) (4cm distance)
-  vislamParams.useLogCameraHeight = false;
+  vislamParams.useLogCameraHeight = true;//false;
   vislamParams.logCameraHeightBootstrap = -3.22;
   vislamParams.noInitWhenMoving = true;
   vislamParams.limitedIMUbWtrigger = 35;//35.0;
@@ -375,6 +375,7 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   pub_vislam_image_.publish(img_msg);//,c_info);
 
   pub_vislam_camera_info_.publish(c_info);
+
 
   // compute transforms
   std::vector<geometry_msgs::TransformStamped> transforms;

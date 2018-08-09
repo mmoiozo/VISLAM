@@ -176,6 +176,18 @@ int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vi
     buffer_f[22] = vislamPose.aBias[1];
     buffer_f[23] = vislamPose.aBias[2];
 
+    //High-Level commands from ROS to autopilot
+    //target_pos_x
+    //target_pos_y
+    //target_pos_z
+    //target_psi
+    //target_vel_x
+    //target_vel_y
+    //target_vel_z
+    //target_psi_dot
+    //MODE (POS_MODE,VEL_MODE,LANDING, CUT props, MANUAL etc...)
+
+
     //pose error covariance(for now only autocovariance)
     for( int16_t i = 0; i < 6; i++ ) {
         buffer_f[24+i] =  i;//vislamPose.errCovPose[i][i];
