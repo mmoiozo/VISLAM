@@ -123,13 +123,17 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
 
   // config.principalPoint[0] = 320;
   // config.principalPoint[1] = 240;
-  config.principalPoint[0] = 305.590618;
-  config.principalPoint[1] = 239.961624;
+  // config.principalPoint[0] = 305.590618;
+  // config.principalPoint[1] = 239.961624;
+  config.principalPoint[0] = 309.546897;
+  config.principalPoint[1] = 266.025786;
 
   // config.focalLength[0] = 275;
   // config.focalLength[1] = 275;
-  config.focalLength[0] = 267.324250;
-  config.focalLength[1] = 267.324250;
+  // config.focalLength[0] = 267.324250;
+  // config.focalLength[1] = 267.324250;
+  config.focalLength[0] = 278.395492;
+  config.focalLength[1] = 278.395492;
 
 
   // config.distortion[0] = 0.003908;
@@ -143,10 +147,21 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
   // config.distortionModel = 10;
 
   //dist = "0.066161 -0.040640 0.008189 -0.000463 0.000000 0.000000 0.000000 0.000000"
-  config.distortion[0] = 0.066161;
-  config.distortion[1] = -0.040640;
-  config.distortion[2] = 0.008189;
-  config.distortion[3] = -0.000463;
+  // config.distortion[0] = 0.066161;
+  // config.distortion[1] = -0.040640;
+  // config.distortion[2] = 0.008189;
+  // config.distortion[3] = -0.000463;
+  // config.distortion[4] = 0;
+  // config.distortion[5] = 0;
+  // config.distortion[6] = 0;
+  // config.distortion[7] = 0;
+  // config.distortionModel = 10;
+
+//distortion=-0.002894,-0.020942,0.006665,-0.000712,0.000000,0.000000,0.000000,0.000000
+  config.distortion[0] = -0.002894;
+  config.distortion[1] = -0.020942;
+  config.distortion[2] = 0.006665;
+  config.distortion[3] = -0.000712;
   config.distortion[4] = 0;
   config.distortion[5] = 0;
   config.distortion[6] = 0;
@@ -186,7 +201,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
 
   vislamParams.logDepthBootstrap = -3.2;//0; for ln(0.04) (4cm distance)
   vislamParams.useLogCameraHeight = true;// false;
-  vislamParams.logCameraHeightBootstrap = -3.22;
+  vislamParams.logCameraHeightBootstrap = -3.5//-3.22; //-3.5 for ln(0.03)
   vislamParams.noInitWhenMoving = true;
   vislamParams.limitedIMUbWtrigger = 35;//35.0;
 
@@ -300,6 +315,11 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   pose_msg.pose.orientation.y = q.getY();
   pose_msg.pose.orientation.z = q.getZ();
   pose_msg.pose.orientation.w = q.getW();
+
+  //C_cg_b = tf2::Transform(q_cg_b,tf2::Vector3(0,0,0));
+
+
+
   pub_vislam_pose_.publish(pose_msg);
 
     //publish the trajectory message.

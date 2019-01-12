@@ -11,7 +11,6 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   tf2_ros
   cv_bridge
-  hl_control
 )
 
 ## System dependencies are found with CMake's conventions
