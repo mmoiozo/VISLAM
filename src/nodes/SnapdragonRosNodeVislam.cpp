@@ -42,6 +42,12 @@
 #include <tf2/LinearMath/Matrix3x3.h>
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/buffer.h>
+#include <tf2/buffer_core.h>
+#include <tf2/convert.h>
+#include <tf2/transform_datatypes.h>
+#include <string>
+#include <std_msgs/Float64MultiArray.h>
+
 
 // #include <time.h>
 //
@@ -53,6 +59,8 @@
 // uint64_t timestamp_ns_prev = 0;
 // int time_count = 0;
 
+tf2::Vector3 t_cg_v, t_cg_vel, t_cg_vel_comp_b, t_cg_vel_comp;
+
 Snapdragon::RosNode::Vislam::Vislam( ros::NodeHandle nh ) : nh_(nh)
 {
   pub_vislam_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("vislam/pose",1);
@@ -60,7 +68,7 @@ Snapdragon::RosNode::Vislam::Vislam( ros::NodeHandle nh ) : nh_(nh)
   pub_vislam_path_ = nh_.advertise<visualization_msgs::Marker>("vislam/path",1);
   image_transport::ImageTransport it(nh_);
   image_transport::ImageTransport it_info(nh_);
-  pub_vislam_image_ = it.advertise("/vislam/image",1);
+  pub_vislam_image_ = it.advertise("/vislam/image_raw",1);
   pub_vislam_camera_info_ = nh_.advertise<sensor_msgs::CameraInfo>("/vislam/camera_info",1);
   vislam_initialized_ = false;
   thread_started_ = false;
@@ -201,7 +209,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
 
   vislamParams.logDepthBootstrap = -3.2;//0; for ln(0.04) (4cm distance)
   vislamParams.useLogCameraHeight = true;// false;
-  vislamParams.logCameraHeightBootstrap = -3.5//-3.22; //-3.5 for ln(0.03)
+  vislamParams.logCameraHeightBootstrap = -3.5;//-3.22; //-3.5 for ln(0.03)
   vislamParams.noInitWhenMoving = true;
   vislamParams.limitedIMUbWtrigger = 35;//35.0;
 
@@ -273,7 +281,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
           PublishVislamData( vislamPose, vislamFrameId, timestamp_ns, frame_data );
       }
       //always write to autopilot pipe
-      imu_man_2.write_pipe( vislamPose, vislamFrameId, timestamp_ns );
+      imu_man_2.write_pipe( vislamPose, vislamFrameId, timestamp_ns ,t_cg_v.getX(),t_cg_v.getY(),t_cg_v.getZ(),t_cg_vel.getX(),t_cg_vel.getY(),t_cg_vel.getZ());
     }
     else {
       ROS_WARN_STREAM( "Snapdragon::RosNodeVislam::VislamThreadMain: Warning Getting Pose Information" );
@@ -287,7 +295,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
 }
 
 int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns, uint8_t* frame_data  ) {
-  geometry_msgs::PoseStamped pose_msg;
+  geometry_msgs::PoseStamped pose_msg, pose_msg_cg;
   ros::Time frame_time;
   frame_time.sec = (int32_t)(timestamp_ns/1000000000UL);
   frame_time.nsec = (int32_t)(timestamp_ns % 1000000000UL);
@@ -308,6 +316,8 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
     vislamPose.bodyPose.matrix[2][2]);
   tf2::Quaternion q;
   R.getRotation(q);
+  tf2::Vector3 t_vec(vislamPose.bodyPose.matrix[0][3],vislamPose.bodyPose.matrix[1][3],vislamPose.bodyPose.matrix[2][3]);
+  tf2::Vector3 t_vec_vel(vislamPose.velocity[0],vislamPose.velocity[1],vislamPose.velocity[2]);
   pose_msg.pose.position.x = vislamPose.bodyPose.matrix[0][3];
   pose_msg.pose.position.y = vislamPose.bodyPose.matrix[1][3];
   pose_msg.pose.position.z = vislamPose.bodyPose.matrix[2][3];
@@ -315,12 +325,21 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   pose_msg.pose.orientation.y = q.getY();
   pose_msg.pose.orientation.z = q.getZ();
   pose_msg.pose.orientation.w = q.getW();
+  //
+  tf2::Vector3 t_cg_b(-0.1,-0.03,0);
+  pose_msg_cg = pose_msg;
+  t_cg_v = (t_vec + R*t_cg_b)-t_cg_b;
+  t_cg_vel_comp_b.setX(0.0);
+  t_cg_vel_comp_b.setY(-(t_cg_b.getY()*vislamPose.angularVelocity[0]-t_cg_b.getX()*vislamPose.angularVelocity[2]));
+  t_cg_vel_comp_b.setZ(-t_cg_b.getX()*vislamPose.angularVelocity[1]);
+  t_cg_vel_comp = R*t_cg_vel_comp_b;
+  t_cg_vel = t_vec_vel + t_cg_vel_comp;
+  pose_msg_cg.pose.position.x = t_cg_v.getX(); //C_cg_v.getOrigin();
+  pose_msg_cg.pose.position.y = t_cg_v.getY();
+  pose_msg_cg.pose.position.z = t_cg_v.getZ();
 
-  //C_cg_b = tf2::Transform(q_cg_b,tf2::Vector3(0,0,0));
-
-
-
-  pub_vislam_pose_.publish(pose_msg);
+  pub_vislam_pose_.publish(pose_msg_cg);
+  // pub_vislam_pose_.publish(pose_msg);
 
     //publish the trajectory message.
     path.id = 0;
@@ -374,23 +393,18 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   c_info.height = 480;
   c_info.width = 640;
 
-  // config.principalPoint[0] = 305.590618;
-  // config.principalPoint[1] = 239.961624;
-  //
-  // // config.focalLength[0] = 275;
-  // // config.focalLength[1] = 275;
-  // config.focalLength[0] = 267.324250;
-  // config.focalLength[1] = 267.324250;
+  std::string model = "plumb_bob";
+  c_info.distortion_model = model;
+  double D_params[5] = {-0.288771, 0.096247, 0.000000, 0.000000, -0.014938};
+  std::vector<double> D_vec{-0.288771, 0.096247, 0.000000, 0.000000, -0.014938};
+  double K_params[9] = {276.820941, 0.000000, 315.388857, 0.000000, 276.820941, 239.817179, 0.000000, 0.000000, 1.000000};
+  double R_params[9] = {1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000};
+  double P_params[12] = {276.820941, 0.000000, 315.388857, 0.000000, 0.000000, 276.820941, 239.817179, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000};
 
-   c_info.K[0] =  0.0;//267.324250;
-   // c_info.K[1] = 0;
-   // c_info.K[2] = 305.590618;
-   // c_info.K[3] = 0;
-   // c_info.K[4] = 267.324250;
-   // c_info.K[5] = 239.961624;
-   // c_info.K[6] = 0;
-   // c_info.K[7] = 0;
-   // c_info.K[8] = 1;
+  for(int i = 0; i < 9; i++)c_info.K[i] = K_params[i];
+  for(int i = 0; i < 9; i++)c_info.R[i] = R_params[i];
+  for(int i = 0; i < 12; i++)c_info.P[i] = P_params[i];
+  c_info.D =  D_vec;
 
   pub_vislam_image_.publish(img_msg);//,c_info);
 

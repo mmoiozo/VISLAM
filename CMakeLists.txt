@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   rospy
   std_msgs
+  tf2
   tf2_ros
   cv_bridge
 )
