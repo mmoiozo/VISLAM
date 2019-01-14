@@ -9,6 +9,8 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   rospy
   std_msgs
+  aruco
+  aruco_msgs
   tf2
   tf2_ros
   cv_bridge
@@ -108,6 +110,7 @@ catkin_package(
 #  LIBRARIES snap_vislam
 #  CATKIN_DEPENDS roscpp rospy std_msgs
 #  DEPENDS system_lib
+LIBRARIES aruco_ros_utils
 )
 
 ###########

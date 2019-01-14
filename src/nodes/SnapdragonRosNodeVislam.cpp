@@ -48,6 +48,8 @@
 #include <string>
 #include <std_msgs/Float64MultiArray.h>
 
+#include <aruco_msgs/MarkerArray.h>
+
 
 // #include <time.h>
 //
@@ -59,10 +61,16 @@
 // uint64_t timestamp_ns_prev = 0;
 // int time_count = 0;
 
+int marker_id = 0;
+
+//ros::NodeHandle nm;
+// ros::Subscriber marker_sub;
+
 tf2::Vector3 t_cg_v, t_cg_vel, t_cg_vel_comp_b, t_cg_vel_comp;
 
 Snapdragon::RosNode::Vislam::Vislam( ros::NodeHandle nh ) : nh_(nh)
 {
+  marker_sub = nh_.subscribe("aruco_marker_publisher/markers", 100, &Snapdragon::RosNode::Vislam::marker_Callback,this);
   pub_vislam_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("vislam/pose",1);
   pub_vislam_odometry_ = nh_.advertise<nav_msgs::Odometry>("vislam/odometry",1);
   pub_vislam_path_ = nh_.advertise<visualization_msgs::Marker>("vislam/path",1);
@@ -77,6 +85,30 @@ Snapdragon::RosNode::Vislam::Vislam( ros::NodeHandle nh ) : nh_(nh)
   ros::Duration(1).sleep(); // sleep for 1 second
 }
 
+void Snapdragon::RosNode::Vislam::marker_Callback(const aruco_msgs::MarkerArray marker_msg)
+{
+
+    //TEMP FOR DEBUGGING ONLY USE SINGLE MARKER ID
+    int selected_marker = 0;
+    int found_marker = 0;
+    for(int i = 0;i < marker_msg.markers.size(); i++ ){
+        if(marker_msg.markers[i].id == 120){
+            selected_marker = i;
+            found_marker = 1;
+        }
+    }
+    marker_id = marker_msg.markers[selected_marker].id;
+    // if(found_marker == 0 || got_first_pose == 0)return;//desired marker not found or no valid pose received yet
+    // //wat if no valid pose for longer time?
+
+    // if(marker_msg.markers.size() < 1 || got_first_pose == 0)return;//at least one marker found and got first pose
+    //
+    // for(int i = 0;i < marker_msg.markers.size();i++){
+    //     map_update(marker_msg,i);
+    // }
+
+}
+
 Snapdragon::RosNode::Vislam::~Vislam()
 {
   Stop();
@@ -89,6 +121,8 @@ int32_t Snapdragon::RosNode::Vislam::Initialize()
 }
 
 int32_t Snapdragon::RosNode::Vislam::Start() {
+    // marker_sub = nm.subscribe("aruco_marker_publisher/markers", 100, marker_Callback);
+
 // start vislam processing thread.
   if( !thread_started_ ) {
     thread_started_ = true;
