@@ -67,6 +67,7 @@ int marker_id = 0;
 // ros::Subscriber marker_sub;
 
 tf2::Vector3 t_cg_v, t_cg_vel, t_cg_vel_comp_b, t_cg_vel_comp;
+tf2::Vector3 marker_pos_v, marker_pos_b;
 
 Snapdragon::RosNode::Vislam::Vislam( ros::NodeHandle nh ) : nh_(nh)
 {
@@ -95,9 +96,12 @@ void Snapdragon::RosNode::Vislam::marker_Callback(const aruco_msgs::MarkerArray 
         if(marker_msg.markers[i].id == 120){
             selected_marker = i;
             found_marker = 1;
+            tf2::Vector3 marker_vec(marker_msg.markers[selected_marker].pose.pose.position.x,marker_msg.markers[selected_marker].pose.pose.position.y,marker_msg.markers[selected_marker].pose.pose.position.z);
+            marker_pos_b = marker_vec;
+            marker_id = marker_msg.markers[selected_marker].id;
         }
     }
-    marker_id = marker_msg.markers[selected_marker].id;
+
     // if(found_marker == 0 || got_first_pose == 0)return;//desired marker not found or no valid pose received yet
     // //wat if no valid pose for longer time?
 
@@ -368,9 +372,18 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   t_cg_vel_comp_b.setZ(-t_cg_b.getX()*vislamPose.angularVelocity[1]);
   t_cg_vel_comp = R*t_cg_vel_comp_b;
   t_cg_vel = t_vec_vel + t_cg_vel_comp;
-  pose_msg_cg.pose.position.x = t_cg_v.getX(); //C_cg_v.getOrigin();
-  pose_msg_cg.pose.position.y = t_cg_v.getY();
-  pose_msg_cg.pose.position.z = t_cg_v.getZ();
+
+  //Marker position in vislam frame
+  marker_pos_v = R*marker_pos_b + t_vec;
+  pose_msg_cg.pose.position.x = marker_pos_v.getX(); //C_cg_v.getOrigin();
+  pose_msg_cg.pose.position.y = marker_pos_v.getY();
+  pose_msg_cg.pose.position.z = marker_pos_v.getZ();
+
+  // pose_msg_cg.pose.position.x = t_cg_v.getX(); //C_cg_v.getOrigin();
+  // pose_msg_cg.pose.position.y = t_cg_v.getY();
+  // pose_msg_cg.pose.position.z = t_cg_v.getZ();
+
+
 
   pub_vislam_pose_.publish(pose_msg_cg);
   // pub_vislam_pose_.publish(pose_msg);
