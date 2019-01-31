@@ -41,6 +41,11 @@
 #include <sensor-imu/sensor_imu_api.h>
 #include <sensor-imu/sensor_datatypes.h>
 
+#include <tf2_ros/buffer.h>
+#include <tf2/buffer_core.h>
+#include <geometry_msgs/Vector3.h>
+
+
 namespace Snapdragon {
   class ImuManager;
   class Imu_IEventListener;
@@ -82,7 +87,7 @@ public:
   ImuManager();
 
   //write vislam output to pipe to autopilot
-  int32_t write_pipe( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns, float x_cg, float y_cg, float z_cg,float x_cg_vel, float y_cg_vel, float z_cg_vel );
+  int32_t write_pipe( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns,tf2::Vector3 vec_cg, tf2::Vector3 vec_cg_vel, tf2::Vector3 marker_vec_b, tf2::Vector3 marker_vec_v);
 
 
   /**

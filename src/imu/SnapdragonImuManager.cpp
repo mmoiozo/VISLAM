@@ -45,6 +45,9 @@
 
 //quaternion transform
 #include <tf2/LinearMath/Matrix3x3.h>
+#include <tf2_ros/buffer.h>
+#include <tf2/buffer_core.h>
+#include <geometry_msgs/Vector3.h>
 // #include <tf2_ros/transform_broadcaster.h>
 // #include <tf2_ros/buffer.h>
 
@@ -131,7 +134,7 @@ int read_pipe(int32_t *dsp_read_buffer,int buf_len)
 	return ret;
 }
 
-int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns, float x_cg, float y_cg, float z_cg,float x_cg_vel, float y_cg_vel, float z_cg_vel){
+int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vislamFrameId, uint64_t timestamp_ns,tf2::Vector3 vec_cg, tf2::Vector3 vec_cg_vel, tf2::Vector3 marker_vec_b, tf2::Vector3 marker_vec_v){
 
     uint32_t vislam_errorCode = vislamPose.errorCode;
     int16_t vislam_poseQuality = vislamPose.poseQuality;
@@ -142,9 +145,9 @@ int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vi
     //use gravityCameraPose instead of bodyPose??
 
     //position x y z in global frame
-    buffer_f[0] = x_cg;//vislamPose.bodyPose.matrix[0][3];
-    buffer_f[1] = y_cg;//vislamPose.bodyPose.matrix[1][3];
-    buffer_f[2] = z_cg;//vislamPose.bodyPose.matrix[2][3];
+    buffer_f[0] = vec_cg.getX();//x_cg;//vislamPose.bodyPose.matrix[0][3];
+    buffer_f[1] = vec_cg.getY();//y_cg;//vislamPose.bodyPose.matrix[1][3];
+    buffer_f[2] = vec_cg.getZ();//z_cg;//vislamPose.bodyPose.matrix[2][3];
 
     buffer_f[3] = vislamPose.bodyPose.matrix[0][0];
     buffer_f[4] = vislamPose.bodyPose.matrix[0][1];
@@ -158,14 +161,19 @@ int32_t Snapdragon::ImuManager::write_pipe( mvVISLAMPose& vislamPose, int64_t vi
 
 
     //x y z velocity compensated for cg shift
-    buffer_f[12] = x_cg_vel;//vislamPose.velocity[0];
-    buffer_f[13] = y_cg_vel;//vislamPose.velocity[1];
-    buffer_f[14] = z_cg_vel;//vislamPose.velocity[2];
+    buffer_f[12] = vec_cg_vel.getX();//x_cg_vel;//vislamPose.velocity[0];
+    buffer_f[13] = vec_cg_vel.getY();//y_cg_vel;//vislamPose.velocity[1];
+    buffer_f[14] = vec_cg_vel.getZ();//z_cg_vel;//vislamPose.velocity[2];
 
     // p q r body velocity
-    buffer_f[15] = vislamPose.angularVelocity[0];
-    buffer_f[16] = vislamPose.angularVelocity[1];
-    buffer_f[17] = vislamPose.angularVelocity[2];
+    // buffer_f[15] = vislamPose.angularVelocity[0];
+    // buffer_f[16] = vislamPose.angularVelocity[1];
+    // buffer_f[17] = vislamPose.angularVelocity[2];
+    //marker position in vislam frame
+    buffer_f[15] = marker_vec_v.getX();//vislamPose.angularVelocity[0];
+    buffer_f[16] = marker_vec_v.getY();//vislamPose.angularVelocity[1];
+    buffer_f[17] = marker_vec_v.getZ();//vislamPose.angularVelocity[2];
+
 
     //gyro biases
     buffer_f[18] = vislamPose.wBias[0];

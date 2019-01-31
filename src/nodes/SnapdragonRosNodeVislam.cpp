@@ -309,7 +309,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
     //     lag_time_max = 0;
     //     time_count = 0;
     // }
-
+    //
 
     if( vislam_ret == 0 ) {
       //check if the pose quality is good.  If not do not publish the data.
@@ -319,7 +319,7 @@ void Snapdragon::RosNode::Vislam::ThreadMain() {
           PublishVislamData( vislamPose, vislamFrameId, timestamp_ns, frame_data );
       }
       //always write to autopilot pipe
-      imu_man_2.write_pipe( vislamPose, vislamFrameId, timestamp_ns ,t_cg_v.getX(),t_cg_v.getY(),t_cg_v.getZ(),t_cg_vel.getX(),t_cg_vel.getY(),t_cg_vel.getZ());
+      imu_man_2.write_pipe( vislamPose, vislamFrameId, timestamp_ns ,t_cg_v,t_cg_vel,marker_pos_b,marker_pos_v);
     }
     else {
       ROS_WARN_STREAM( "Snapdragon::RosNodeVislam::VislamThreadMain: Warning Getting Pose Information" );
@@ -364,29 +364,28 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   pose_msg.pose.orientation.z = q.getZ();
   pose_msg.pose.orientation.w = q.getW();
   //
-  tf2::Vector3 t_cg_b(-0.1,-0.03,0);
+  tf2::Vector3 t_cg_b(-0.1,0,-0.03);
   pose_msg_cg = pose_msg;
   t_cg_v = (t_vec + R*t_cg_b)-t_cg_b;
   t_cg_vel_comp_b.setX(0.0);
-  t_cg_vel_comp_b.setY(-(t_cg_b.getY()*vislamPose.angularVelocity[0]-t_cg_b.getX()*vislamPose.angularVelocity[2]));
+  t_cg_vel_comp_b.setY(-(t_cg_b.getZ()*vislamPose.angularVelocity[0]-t_cg_b.getX()*vislamPose.angularVelocity[2]));
   t_cg_vel_comp_b.setZ(-t_cg_b.getX()*vislamPose.angularVelocity[1]);
   t_cg_vel_comp = R*t_cg_vel_comp_b;
   t_cg_vel = t_vec_vel + t_cg_vel_comp;
 
   //Marker position in vislam frame
   marker_pos_v = R*marker_pos_b + t_vec;
-  pose_msg_cg.pose.position.x = marker_pos_v.getX(); //C_cg_v.getOrigin();
-  pose_msg_cg.pose.position.y = marker_pos_v.getY();
-  pose_msg_cg.pose.position.z = marker_pos_v.getZ();
+  pose_msg_cg.pose.position.x = marker_pos_b.getX(); //C_cg_v.getOrigin();
+  pose_msg_cg.pose.position.y = marker_pos_b.getY();
+  pose_msg_cg.pose.position.z = marker_pos_b.getZ();
 
   // pose_msg_cg.pose.position.x = t_cg_v.getX(); //C_cg_v.getOrigin();
   // pose_msg_cg.pose.position.y = t_cg_v.getY();
   // pose_msg_cg.pose.position.z = t_cg_v.getZ();
 
 
-
-  pub_vislam_pose_.publish(pose_msg_cg);
-  // pub_vislam_pose_.publish(pose_msg);
+  //pub_vislam_pose_.publish(pose_msg_cg);
+   pub_vislam_pose_.publish(pose_msg);
 
     //publish the trajectory message.
     path.id = 0;
@@ -442,11 +441,20 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
 
   std::string model = "plumb_bob";
   c_info.distortion_model = model;
-  double D_params[5] = {-0.288771, 0.096247, 0.000000, 0.000000, -0.014938};
-  std::vector<double> D_vec{-0.288771, 0.096247, 0.000000, 0.000000, -0.014938};
-  double K_params[9] = {276.820941, 0.000000, 315.388857, 0.000000, 276.820941, 239.817179, 0.000000, 0.000000, 1.000000};
+  //// five parameter distortion_model
+  // double D_params[5] = {-0.288771, 0.096247, 0.000000, 0.000000, -0.014938};
+  // std::vector<double> D_vec{-0.288771, 0.096247, 0.000000, 0.000000, -0.014938};
+  // double K_params[9] = {276.820941, 0.000000, 315.388857, 0.000000, 276.820941, 239.817179, 0.000000, 0.000000, 1.000000};
+  // double R_params[9] = {1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000};
+  // double P_params[12] = {276.820941, 0.000000, 315.388857, 0.000000, 0.000000, 276.820941, 239.817179, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000};
+
+  //4 parameter distortion_model
+  double D_params[4] = {-0.2551000, 0.0532477, 0.000000, 0.000000};
+  std::vector<double> D_vec{-0.2551000, 0.0532477, 0.000000, 0.000000};
+  double K_params[9] = {279.4395459, 0.000000, 311.8381416, 0.000000, 279.4395459, 243.1600128, 0.000000, 0.000000, 1.000000};
   double R_params[9] = {1.000000, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000, 0.000000, 0.000000, 1.000000};
-  double P_params[12] = {276.820941, 0.000000, 315.388857, 0.000000, 0.000000, 276.820941, 239.817179, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000};
+  double P_params[12] = {279.4395459, 0.000000, 311.8381416, 0.000000, 0.000000, 279.4395459, 243.1600128, 0.000000, 0.000000, 0.000000, 1.000000, 0.000000};
+
 
   for(int i = 0; i < 9; i++)c_info.K[i] = K_params[i];
   for(int i = 0; i < 9; i++)c_info.R[i] = R_params[i];
