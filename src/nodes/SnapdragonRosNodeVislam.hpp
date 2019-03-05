@@ -53,7 +53,8 @@
 #include <mvVISLAM.h>
 #include "SnapdragonVislamManager.hpp"
 
-#include <aruco_msgs/MarkerArray.h>
+#include <geometry_msgs/PoseStamped.h>
+
 
 /**
  * Wrapper Ros Node to support VISLAM from Snapdragon flight platform.
@@ -78,7 +79,7 @@ public:
    */
   Vislam( ros::NodeHandle nh );
 
-  void marker_Callback(const aruco_msgs::MarkerArray marker_msg);
+  void marker_Callback(const geometry_msgs::PoseStamped marker_msg);
 
   /**
    * Initialized the Ros Vislam Node. This does the initialization for the

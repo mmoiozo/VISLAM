@@ -48,8 +48,6 @@
 #include <string>
 #include <std_msgs/Float64MultiArray.h>
 
-#include <aruco_msgs/MarkerArray.h>
-
 
 // #include <time.h>
 //
@@ -71,7 +69,7 @@ tf2::Vector3 marker_pos_v, marker_pos_b;
 
 Snapdragon::RosNode::Vislam::Vislam( ros::NodeHandle nh ) : nh_(nh)
 {
-  marker_sub = nh_.subscribe("aruco_marker_publisher/markers", 100, &Snapdragon::RosNode::Vislam::marker_Callback,this);
+  marker_sub = nh_.subscribe("/aruco_landing/pose", 100, &Snapdragon::RosNode::Vislam::marker_Callback,this);
   pub_vislam_pose_ = nh_.advertise<geometry_msgs::PoseStamped>("vislam/pose",1);
   pub_vislam_odometry_ = nh_.advertise<nav_msgs::Odometry>("vislam/odometry",1);
   pub_vislam_path_ = nh_.advertise<visualization_msgs::Marker>("vislam/path",1);
@@ -86,30 +84,11 @@ Snapdragon::RosNode::Vislam::Vislam( ros::NodeHandle nh ) : nh_(nh)
   ros::Duration(1).sleep(); // sleep for 1 second
 }
 
-void Snapdragon::RosNode::Vislam::marker_Callback(const aruco_msgs::MarkerArray marker_msg)
+void Snapdragon::RosNode::Vislam::marker_Callback(const geometry_msgs::PoseStamped marker_msg)
 {
-
-    //TEMP FOR DEBUGGING ONLY USE SINGLE MARKER ID
-    int selected_marker = 0;
-    int found_marker = 0;
-    for(int i = 0;i < marker_msg.markers.size(); i++ ){
-        if(marker_msg.markers[i].id == 120){
-            selected_marker = i;
-            found_marker = 1;
-            tf2::Vector3 marker_vec(marker_msg.markers[selected_marker].pose.pose.position.x,marker_msg.markers[selected_marker].pose.pose.position.y,marker_msg.markers[selected_marker].pose.pose.position.z);
-            marker_pos_b = marker_vec;
-            marker_id = marker_msg.markers[selected_marker].id;
-        }
-    }
-
-    // if(found_marker == 0 || got_first_pose == 0)return;//desired marker not found or no valid pose received yet
-    // //wat if no valid pose for longer time?
-
-    // if(marker_msg.markers.size() < 1 || got_first_pose == 0)return;//at least one marker found and got first pose
-    //
-    // for(int i = 0;i < marker_msg.markers.size();i++){
-    //     map_update(marker_msg,i);
-    // }
+    marker_pos_v.setX(marker_msg.pose.position.x);
+    marker_pos_v.setZ(marker_msg.pose.position.y);
+    marker_pos_v.setY(marker_msg.pose.position.z);
 
 }
 
@@ -374,7 +353,7 @@ int32_t Snapdragon::RosNode::Vislam::PublishVislamData( mvVISLAMPose& vislamPose
   t_cg_vel = t_vec_vel + t_cg_vel_comp;
 
   //Marker position in vislam frame
-  marker_pos_v = R*marker_pos_b + t_vec;
+  //marker_pos_v = R*marker_pos_b + t_vec;
   pose_msg_cg.pose.position.x = marker_pos_b.getX(); //C_cg_v.getOrigin();
   pose_msg_cg.pose.position.y = marker_pos_b.getY();
   pose_msg_cg.pose.position.z = marker_pos_b.getZ();
